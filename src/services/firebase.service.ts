@@ -1,0 +1,73 @@
+import { Injectable, signal } from '@angular/core';
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { 
+  getAuth, 
+  Auth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged,
+  User,
+  sendEmailVerification,
+  sendPasswordResetEmail
+} from 'firebase/auth';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class FirebaseService {
+  private firebaseApp: FirebaseApp;
+  private auth: Auth;
+  
+  readonly currentUser = signal<User | null>(null);
+
+  constructor() {
+    const firebaseConfig = {
+      apiKey: "AIzaSyBzZHBwMKT6bqKyPLaRIor8c_brT942DHI",
+      authDomain: "triptraccker-tt.firebaseapp.com",
+      projectId: "triptraccker-tt",
+      storageBucket: "triptraccker-tt.firebasestorage.app",
+      messagingSenderId: "422434809058",
+      appId: "1:422434809058:web:f556f885baa785567d2abb"
+    };
+
+    this.firebaseApp = initializeApp(firebaseConfig);
+    this.auth = getAuth(this.firebaseApp);
+    
+    onAuthStateChanged(this.auth, (user) => {
+        if (user && !user.emailVerified) {
+            // This case can happen if the page is reloaded after registration
+            // but before verification. We ensure they are logged out.
+            signOut(this.auth);
+            this.currentUser.set(null);
+        } else {
+            this.currentUser.set(user);
+        }
+    });
+  }
+
+  async login(email: string, password: string): Promise<any> {
+    const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
+    if (!userCredential.user.emailVerified) {
+      await signOut(this.auth);
+      const error: any = new Error("Email not verified");
+      error.code = 'auth/email-not-verified';
+      throw error;
+    }
+    return userCredential;
+  }
+
+  async register(email: string, password: string): Promise<void> {
+    const userCredential = await createUserWithEmailAndPassword(this.auth, email, password);
+    await sendEmailVerification(userCredential.user);
+    await signOut(this.auth);
+  }
+
+  logout(): Promise<void> {
+    return signOut(this.auth);
+  }
+
+  sendPasswordReset(email: string): Promise<void> {
+    return sendPasswordResetEmail(this.auth, email);
+  }
+}

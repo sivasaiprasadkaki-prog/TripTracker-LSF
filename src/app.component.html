@@ -1,0 +1,181 @@
+<div class="flex items-center justify-center min-h-screen font-sans p-4">
+  <div class="w-full max-w-md">
+
+    @if (currentUser()) {
+      <div class="bg-slate-800 rounded-xl shadow-2xl p-8 text-center animate-fade-in">
+        <svg class="mx-auto h-16 w-16 text-green-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+        </svg>
+        <h2 class="text-3xl font-bold text-white mt-4">Welcome Back!</h2>
+        <p class="text-slate-400 mt-2">You are successfully logged in.</p>
+        <p class="text-indigo-400 font-mono mt-4 break-all">{{ currentUser()?.email }}</p>
+        <button (click)="logout()" class="mt-8 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-slate-800">
+          Logout
+        </button>
+      </div>
+    } @else {
+      <div class="bg-slate-800 rounded-xl shadow-2xl p-8 transform transition-all duration-500">
+        @switch (view()) {
+          @case ('login') {
+            <div class="animate-fade-in">
+              <h2 class="text-3xl font-bold text-center text-white">Welcome Back</h2>
+              <p class="text-center text-slate-400 mt-2">Sign in to continue</p>
+              <form [formGroup]="loginForm" (ngSubmit)="onLogin()" class="mt-8 space-y-6">
+                <div>
+                  <label for="login-email" class="sr-only">Email address</label>
+                  <input formControlName="email" id="login-email" name="email" type="email" autocomplete="email" required class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Email address">
+                </div>
+                <div>
+                  <label for="login-password" class="sr-only">Password</label>
+                  <input formControlName="password" id="login-password" name="password" type="password" autocomplete="current-password" required class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Password">
+                </div>
+                <div class="text-right text-sm">
+                  <button type="button" (click)="switchToForgotPassword()" class="font-medium text-indigo-400 hover:text-indigo-300 focus:outline-none">
+                    Forgot password?
+                  </button>
+                </div>
+                <button [disabled]="isLoading()" type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300 ease-in-out disabled:bg-indigo-400 disabled:cursor-not-allowed flex items-center justify-center">
+                  @if (isLoading()) {
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Signing In...</span>
+                  } @else {
+                    <span>Sign In</span>
+                  }
+                </button>
+              </form>
+              @if (errorMessage()) {
+                <p class="mt-4 text-center text-red-400 animate-shake">{{ errorMessage() }}</p>
+              }
+              <p class="mt-6 text-center text-sm text-slate-400">
+                Don't have an account?
+                <button (click)="switchToRegister()" class="font-medium text-indigo-400 hover:text-indigo-300">
+                  Sign up
+                </button>
+              </p>
+            </div>
+          }
+          @case ('register') {
+            <div class="animate-fade-in">
+              <h2 class="text-3xl font-bold text-center text-white">Create Account</h2>
+              <p class="text-center text-slate-400 mt-2">Get started with us today</p>
+              <form [formGroup]="registerForm" (ngSubmit)="onRegister()" class="mt-8 space-y-4">
+                 <div>
+                  <label for="register-name" class="sr-only">Name</label>
+                  <input formControlName="name" id="register-name" name="name" type="text" autocomplete="name" required class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Full Name">
+                </div>
+                <div>
+                  <label for="register-email" class="sr-only">Email address</label>
+                  <input formControlName="email" id="register-email" name="email" type="email" autocomplete="email" required class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Email address">
+                </div>
+                <div>
+                  <label for="register-password" class="sr-only">Password</label>
+                  <input formControlName="password" id="register-password" name="password" type="password" required class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Password (min. 6 characters)">
+                </div>
+                 <div>
+                  <label for="register-repeat-password" class="sr-only">Repeat Password</label>
+                  <input formControlName="repeatPassword" id="register-repeat-password" name="repeat-password" type="password" required class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Repeat Password">
+                </div>
+                <button [disabled]="isLoading()" type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300 ease-in-out disabled:bg-indigo-400 disabled:cursor-not-allowed flex items-center justify-center">
+                   @if (isLoading()) {
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Creating Account...</span>
+                  } @else {
+                    <span>Sign Up</span>
+                  }
+                </button>
+              </form>
+               @if (errorMessage()) {
+                <p class="mt-4 text-center text-red-400 animate-shake">{{ errorMessage() }}</p>
+              }
+              <p class="mt-6 text-center text-sm text-slate-400">
+                Already have an account?
+                <button (click)="switchToLogin()" class="font-medium text-indigo-400 hover:text-indigo-300">
+                  Sign in
+                </button>
+              </p>
+            </div>
+          }
+          @case ('verifyEmail') {
+            <div class="text-center animate-fade-in">
+              <svg class="mx-auto h-16 w-16 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m21.75 0-9-5.25m9 5.25-9 5.25m0-5.25L3 6.75M3 6.75l9 5.25" />
+              </svg>
+              <h2 class="text-3xl font-bold text-white mt-4">Verify Your Email</h2>
+              <p class="text-slate-400 mt-2">
+                We have sent a verification email to 
+                <strong class="text-indigo-300">{{ emailForMessage() }}</strong>.
+              </p>
+              <p class="text-slate-400 mt-1">Please check your inbox and click the link to continue.</p>
+              <button (click)="switchToLogin()" class="mt-8 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-800">
+                Go to Login
+              </button>
+            </div>
+          }
+           @case ('forgotPassword') {
+            <div class="animate-fade-in">
+              <h2 class="text-3xl font-bold text-center text-white">Reset Password</h2>
+              <p class="text-center text-slate-400 mt-2">Enter your email to get a reset link</p>
+              <form [formGroup]="forgotPasswordForm" (ngSubmit)="onForgotPassword()" class="mt-8 space-y-6">
+                <div>
+                  <label for="reset-email" class="sr-only">Email address</label>
+                  <input formControlName="email" id="reset-email" name="email" type="email" autocomplete="email" required class="w-full px-4 py-3 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Email address">
+                </div>
+                <button [disabled]="isLoading()" type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300 ease-in-out disabled:bg-indigo-400 disabled:cursor-not-allowed flex items-center justify-center">
+                  @if (isLoading()) {
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Sending Link...</span>
+                  } @else {
+                    <span>Get Reset Link</span>
+                  }
+                </button>
+              </form>
+              <p class="mt-6 text-center text-sm text-slate-400">
+                Remember your password?
+                <button (click)="switchToLogin()" class="font-medium text-indigo-400 hover:text-indigo-300">
+                  Sign in
+                </button>
+              </p>
+            </div>
+          }
+          @case ('resetLinkSent') {
+             <div class="text-center animate-fade-in">
+              <svg class="mx-auto h-16 w-16 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+              </svg>
+              <h2 class="text-3xl font-bold text-white mt-4">Check Your Inbox</h2>
+              <p class="text-slate-400 mt-2">
+                We sent a password reset link to 
+                <strong class="text-indigo-300">{{ emailForMessage() }}</strong>.
+              </p>
+              <button (click)="switchToLogin()" class="mt-8 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-800">
+                Back to Sign In
+              </button>
+            </div>
+          }
+        }
+      </div>
+    }
+  </div>
+</div>
+<style>
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+  }
+  .animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
+  .animate-shake { animation: shake 0.5s ease-in-out; }
+</style>
