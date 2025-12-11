@@ -1,5 +1,5 @@
 {
-  "name": "Firebase Auth App",
+  "name": "TripTraccker",
   "description": "An Angular application demonstrating user registration and login functionality using Firebase Authentication.",
   "requestFramePermissions": []
 }

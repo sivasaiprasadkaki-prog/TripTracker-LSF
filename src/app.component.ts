@@ -1,15 +1,36 @@
-import { Component, ChangeDetectionStrategy, signal, inject, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, inject, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { FirebaseService } from './services/firebase.service';
+import { LedgerDetailsComponent } from './ledger-details.component';
+
+export interface Entry {
+  id: string;
+  type: 'cash-in' | 'cash-out';
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
+  details: string;
+  category: string;
+  mode: string;
+  amount: number;
+  attachments?: string[]; // Changed from File[] to string[] for base64 URLs
+  notes?: string;
+}
+
+export interface Ledger {
+  name: string;
+  createdAt: Date;
+  entries: Entry[];
+}
 
 type View = 'login' | 'register' | 'verifyEmail' | 'forgotPassword' | 'resetLinkSent';
+type Theme = 'light' | 'dark';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, LedgerDetailsComponent],
 })
 export class AppComponent {
   private fb = inject(FormBuilder);
@@ -19,9 +40,66 @@ export class AppComponent {
   errorMessage = signal<string | null>(null);
   isLoading = signal(false);
   emailForMessage = signal<string | null>(null);
+  
+  selectedLedger = signal<Ledger | null>(null);
 
   currentUser = computed(() => this.firebaseService.currentUser());
+  welcomeMessage = computed(() => {
+    const user = this.currentUser();
+    if (!user) return '';
+    return `Welcome, ${user.displayName || user.email}`;
+  });
   
+  // Home page state
+  ledgers = signal<Ledger[]>([]);
+  isSearchVisible = signal(false);
+  isLedgerModalVisible = signal(false);
+  editingLedger = signal<Ledger | null>(null);
+  isInitialLoadComplete = signal(false);
+
+  // Computed properties for Ledger Modal
+  modalTitle = computed(() => this.editingLedger() ? 'Edit Ledger' : 'Create New Ledger');
+  modalSubmitButtonText = computed(() => this.editingLedger() ? 'Update' : 'Create');
+
+  // Theme state
+  theme = signal<Theme>('dark');
+
+  constructor() {
+    effect(() => {
+      if (this.theme() === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    });
+
+    // Fetch ledgers on login
+    effect(async (onCleanup) => {
+        const user = this.currentUser();
+        if (user) {
+            this.isLoading.set(true);
+            this.isInitialLoadComplete.set(false);
+            const fetchedLedgers = await this.firebaseService.getLedgers(user.uid);
+            this.ledgers.set(fetchedLedgers);
+            this.isLoading.set(false);
+            this.isInitialLoadComplete.set(true);
+        } else {
+            this.ledgers.set([]);
+            this.isInitialLoadComplete.set(false);
+        }
+    });
+
+     // Save ledgers on any change
+     effect(() => {
+        const ledgersToSave = this.ledgers();
+        const user = this.currentUser();
+        // Only save after the initial fetch is complete to avoid overwriting data
+        if (user && this.isInitialLoadComplete()) {
+            this.firebaseService.saveLedgers(user.uid, ledgersToSave);
+        }
+    });
+  }
+
   static passwordsMatch(control: AbstractControl): ValidationErrors | null {
     const password = control.get('password')?.value;
     const repeatPassword = control.get('repeatPassword')?.value;
@@ -42,6 +120,10 @@ export class AppComponent {
 
   forgotPasswordForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
+  });
+
+  createLedgerForm = this.fb.group({
+    name: ['', [Validators.required, Validators.minLength(1)]],
   });
 
   private resetFormsAndErrors() {
@@ -104,10 +186,10 @@ export class AppComponent {
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    const { email, password } = this.registerForm.value;
+    const { name, email, password } = this.registerForm.value;
     
     try {
-      await this.firebaseService.register(email!, password!);
+      await this.firebaseService.register(name!, email!, password!);
       this.registerForm.reset();
       this.emailForMessage.set(email!);
       this.view.set('verifyEmail');
@@ -135,8 +217,6 @@ export class AppComponent {
       this.emailForMessage.set(email);
       this.view.set('resetLinkSent');
     } catch (error: any) {
-      // For security, we show the success message even if the email doesn't exist
-      // to prevent email enumeration attacks.
       this.emailForMessage.set(email);
       this.view.set('resetLinkSent');
     } finally {
@@ -147,5 +227,78 @@ export class AppComponent {
   logout() {
     this.firebaseService.logout();
     this.switchToLogin();
+    this.ledgers.set([]);
+    this.selectedLedger.set(null);
+  }
+
+  // Home page methods
+  toggleSearch() {
+    this.isSearchVisible.update(v => !v);
+  }
+
+  openLedgerModal(ledger: Ledger | null = null) {
+    if (ledger) {
+      this.editingLedger.set(ledger);
+      this.createLedgerForm.patchValue({ name: ledger.name });
+    } else {
+      this.editingLedger.set(null);
+      this.createLedgerForm.reset();
+    }
+    this.isLedgerModalVisible.set(true);
+  }
+
+  closeLedgerModal() {
+    this.isLedgerModalVisible.set(false);
+    this.editingLedger.set(null);
+    this.createLedgerForm.reset();
+  }
+
+  onSaveLedger() {
+    if (this.createLedgerForm.invalid) {
+      return;
+    }
+    const ledgerName = this.createLedgerForm.value.name?.trim();
+    if (!ledgerName) return;
+  
+    const currentLedger = this.editingLedger();
+    if (currentLedger) {
+      // Update logic
+      this.ledgers.update(ledgers => 
+        ledgers.map(l => l.createdAt.getTime() === currentLedger.createdAt.getTime() ? { ...l, name: ledgerName } : l)
+      );
+    } else {
+      // Create logic
+      const newLedger: Ledger = { name: ledgerName, createdAt: new Date(), entries: [] };
+      this.ledgers.update(currentLedgers => [...currentLedgers, newLedger]);
+    }
+    this.closeLedgerModal();
+  }
+  
+  deleteLedger(ledgerToDelete: Ledger) {
+    this.ledgers.update(ledgers => ledgers.filter(l => l.createdAt.getTime() !== ledgerToDelete.createdAt.getTime()));
+  }
+
+  selectLedger(ledger: Ledger) {
+    this.selectedLedger.set(ledger);
+  }
+  
+  goHome() {
+    this.selectedLedger.set(null);
+  }
+
+  handleLedgerUpdate(updatedLedger: Ledger) {
+    this.ledgers.update(currentLedgers => {
+      const index = currentLedgers.findIndex(l => l.createdAt.getTime() === updatedLedger.createdAt.getTime());
+      if (index > -1) {
+        const newLedgers = [...currentLedgers];
+        newLedgers[index] = updatedLedger;
+        return newLedgers;
+      }
+      return currentLedgers;
+    });
+  }
+
+  toggleTheme() {
+    this.theme.update(current => current === 'light' ? 'dark' : 'light');
   }
 }

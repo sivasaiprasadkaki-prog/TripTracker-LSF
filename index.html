@@ -6,6 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class', // or 'media'
+    }
+  </script>
+  <!-- jsPDF for PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- SheetJS (xlsx) for Excel generation -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -21,12 +30,13 @@
     "@angular/compiler": "https://next.esm.sh/@angular/compiler@^21.0.4?external=rxjs",
     "@angular/core": "https://next.esm.sh/@angular/core@^21.0.4?external=rxjs",
     "firebase/app": "https://next.esm.sh/firebase@^12.6.0/app?external=rxjs",
-    "firebase/auth": "https://next.esm.sh/firebase@^12.6.0/auth?external=rxjs"
+    "firebase/auth": "https://next.esm.sh/firebase@^12.6.0/auth?external=rxjs",
+    "firebase/firestore": "https://next.esm.sh/firebase@^12.6.0/firestore?external=rxjs"
   }
 }
 </script>
 </head>
-<body class="bg-slate-900 text-slate-100">
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
   <app-root></app-root>
 </body>
 </html>
