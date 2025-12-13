@@ -2,7 +2,7 @@
   @if (!selectedLedger()) {
     <div class="font-sans flex flex-col h-screen overflow-hidden bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
       <!-- Header -->
-      <header class="flex items-center justify-between p-4 bg-white dark:bg-slate-800 shadow-sm dark:shadow-md z-10 flex-shrink-0 border-b border-slate-200 dark:border-slate-700">
+      <header class="flex items-center justify-between p-4 bg-white dark:bg-slate-800/50 backdrop-blur-sm z-10 flex-shrink-0 border-b border-slate-200 dark:border-slate-700/50">
         <div>
           <h1 class="text-xl sm:text-2xl font-bold">Trip Tracker</h1>
           <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">{{ welcomeMessage() }}</p>
@@ -33,22 +33,35 @@
               </svg>
             }
           </button>
-          <!-- Profile Avatar/Button -->
-          <button (click)="openProfileModal()" class="w-9 h-9 rounded-full hover:ring-2 hover:ring-indigo-500 dark:hover:ring-indigo-400 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-100 dark:focus:ring-offset-slate-800 focus:ring-indigo-500">
-            @if (userProfile()?.photoURL) {
-              <img [src]="userProfile()?.photoURL" alt="User Profile" class="w-full h-full rounded-full object-cover">
-            } @else {
-              <span class="w-full h-full rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">
-                {{ (userProfile()?.name || currentUser()?.email || 'U').charAt(0).toUpperCase() }}
-              </span>
+          
+          <!-- Profile Dropdown Container -->
+          <div class="relative profile-menu-container">
+            <!-- Profile Avatar/Button -->
+            <button (click)="toggleProfileDropdown()" class="w-9 h-9 rounded-full hover:ring-2 hover:ring-indigo-500 dark:hover:ring-indigo-400 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-100 dark:focus:ring-offset-slate-800 focus:ring-indigo-500">
+              @if (userProfile()?.photoURL) {
+                <img [src]="userProfile()?.photoURL" alt="User Profile" class="w-full h-full rounded-full object-cover">
+              } @else {
+                <span class="w-full h-full rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">
+                  {{ (userProfile()?.name || currentUser()?.email || 'U').charAt(0).toUpperCase() }}
+                </span>
+              }
+            </button>
+
+            <!-- Profile Dropdown Menu -->
+            @if(isProfileDropdownVisible()) {
+              <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none py-1 origin-top-right animate-dropdown">
+                <button (click)="openProfileModal()" class="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-5.5-2.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0ZM10 12a5.99 5.99 0 0 0-4.793 2.39A6.483 6.483 0 0 0 10 16.5a6.483 6.483 0 0 0 4.793-2.11A5.99 5.99 0 0 0 10 12Z" clip-rule="evenodd" /></svg>
+                  <span>Edit Profile</span>
+                </button>
+                <button (click)="logout()" class="w-full text-left flex items-center gap-3 px-4 py-2 text-sm rounded-md transition-all duration-200 dropdown-item-danger">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M17 4.25A2.25 2.25 0 0 0 14.75 2h-5.5A2.25 2.25 0 0 0 7 4.25v2.5a.75.75 0 0 0 1.5 0v-2.5a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 .75.75v11.5a.75.75 0 0 1-.75-.75h-5.5a.75.75 0 0 1-.75-.75v-2.5a.75.75 0 0 0-1.5 0v2.5A2.25 2.25 0 0 0 9.25 18h5.5A2.25 2.25 0 0 0 17 15.75V4.25Z" clip-rule="evenodd" /><path fill-rule="evenodd" d="M1 10a.75.75 0 0 1 .75-.75h9.546l-1.048-.943a.75.75 0 1 1 1.004-1.114l2.5 2.25a.75.75 0 0 1 0 1.114l-2.5 2.25a.75.75 0 1 1-1.004-1.114l1.048-.943H1.75A.75.75 0 0 1 1 10Z" clip-rule="evenodd" /></svg>
+                  <span>Logout</span>
+                </button>
+              </div>
             }
-          </button>
-          <!-- Logout -->
-          <button (click)="logout()" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" aria-label="Logout">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0-3-3m0 0 3-3m-3 3H9" />
-            </svg>
-          </button>
+          </div>
+
         </div>
       </header>
 
@@ -57,17 +70,16 @@
         @if (ledgers().length === 0 && !isLoading()) {
           <!-- No ledgers view -->
           <div class="flex items-center justify-center h-full animate-fade-in">
-            <div class="text-center p-8 sm:p-12 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm max-w-lg">
-               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 text-slate-300 dark:text-slate-600 mb-4 mx-auto">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+            <div class="text-center p-10 sm:p-14 bg-white dark:bg-slate-800 rounded-2xl shadow-lg max-w-md border border-slate-200 dark:border-slate-700">
+              <svg class="w-16 h-16 mx-auto mb-6 text-slate-400 dark:text-slate-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1">
+                <path d="M9 17h6M9 13h6" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M15 4H5a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2V9l-5-5z" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M14 4.5V9h4.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <h2 class="text-xl sm:text-2xl font-semibold text-slate-700 dark:text-slate-200">No Ledgers Yet</h2>
-              <p class="text-slate-500 dark:text-slate-400 mt-2 text-sm sm:text-base">Create your first ledger to start tracking expenses</p>
-              <button (click)="openLedgerModal()" class="mt-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-5 sm:py-3 sm:px-6 rounded-lg text-sm sm:text-base transition-transform hover:scale-105 flex items-center space-x-2">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                  <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
-                </svg>
-                <span>Create Ledger</span>
+              <h2 class="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white">No Ledgers Yet</h2>
+              <p class="text-slate-500 dark:text-slate-400 mt-2">Create your first ledger to start tracking expenses</p>
+              <button (click)="openLedgerModal()" class="mt-8 bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-6 rounded-lg transition-transform hover:scale-105">
+                + Create Ledger
               </button>
             </div>
           </div>
@@ -84,14 +96,14 @@
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               @for(ledger of ledgers(); track ledger.createdAt) {
-                <div (click)="selectLedger(ledger)" class="cursor-pointer bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700/50 p-4 flex flex-col justify-between transition-all hover:shadow-md hover:-translate-y-1">
+                <div (click)="selectLedger(ledger)" class="group ledger-card cursor-pointer relative bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700/50 p-4 flex flex-col justify-between transition-all hover:shadow-xl hover:-translate-y-1 hover:border-indigo-500/50">
                   <div>
                     <h3 class="font-bold text-lg truncate">{{ ledger.name }}</h3>
                     <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       Created: {{ ledger.createdAt.toLocaleDateString() }}
                     </p>
                   </div>
-                  <div class="flex justify-end space-x-2 mt-4">
+                  <div class="flex justify-end space-x-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <button (click)="$event.stopPropagation(); openLedgerModal(ledger)" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400" aria-label="Edit ledger">
                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
                         <path d="m2.695 14.762-1.262 3.155a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.501a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z" />
@@ -374,6 +386,59 @@
   </div>
 }
 <style>
+  .ledger-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 0.5rem; /* rounded-lg */
+    background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.1), transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+  }
+  .ledger-card:hover::before {
+    opacity: 1;
+  }
+  
+  @keyframes dropdown-animation {
+    from {
+      opacity: 0;
+      transform: translateY(-10px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  .animate-dropdown {
+    animation: dropdown-animation 0.2s ease-out forwards;
+  }
+
+  @keyframes pulse-red-glow {
+    from { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    to { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  }
+  .dropdown-item-danger {
+    color: #f87171; /* red-400 */
+  }
+  .dark .dropdown-item-danger {
+    color: #ef4444; /* red-500 */
+  }
+  .dropdown-item-danger:hover {
+    background-color: #ef4444; /* red-500 */
+    color: white;
+    animation: pulse-red-glow 1.5s infinite;
+  }
+  .dark .dropdown-item-danger:hover {
+    background-color: #dc2626; /* red-600 */
+  }
+  .dropdown-item-danger:active {
+    background-color: #dc2626; /* red-600 */
+    transform: scale(0.98);
+  }
+
   @keyframes fade-in {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
