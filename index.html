@@ -2,43 +2,216 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Firebase Auth App</title>
+  <title>TripTracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
-      darkMode: 'class', // or 'media'
+      darkMode: 'class',
+      theme: {
+        extend: {
+          keyframes: {
+            'dropdown-in': {
+              'from': { opacity: 0, transform: 'translateY(-10px) scale(0.95)' },
+              'to': { opacity: 1, transform: 'translateY(0) scale(1)' },
+            },
+            'page-in': {
+              'from': { opacity: 0, transform: 'translateY(15px)' },
+              'to': { opacity: 1, transform: 'translateY(0)' },
+            },
+             'modal-in': {
+              'from': { opacity: 0, transform: 'scale(0.98)' },
+              'to': { opacity: 1, transform: 'scale(1)' },
+            },
+            'fade-in': {
+              'from': { opacity: 0 },
+              'to': { opacity: 1 },
+            },
+            'shake': {
+              '0%, 100%': { transform: 'translateX(0)' },
+              '25%, 75%': { transform: 'translateX(-3px)' },
+              '50%': { transform: 'translateX(3px)' },
+            },
+            'soft-shake': {
+                '0%, 100%': { transform: 'translateX(0)' },
+                '25%': { transform: 'translateX(-2px)' },
+                '75%': { transform: 'translateX(2px)' },
+            },
+          },
+          animation: {
+            'dropdown': 'dropdown-in 0.2s ease-out',
+            'page-in': 'page-in 0.4s ease-out',
+            'modal-in': 'modal-in 0.2s ease-out',
+            'fade-in': 'fade-in 0.5s ease-out',
+            'fade-in-fast': 'fade-in 0.2s ease-out',
+            'shake': 'shake 0.3s ease-in-out',
+            'soft-shake': 'soft-shake 0.2s ease-in-out forwards',
+          },
+        },
+      }
     }
   </script>
-  <!-- jsPDF for PDF generation -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- SheetJS (xlsx) for Excel generation -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <!-- Supabase client for data storage -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script type="importmap">
-{
-  "imports": {
-    "rxjs": "https://esm.sh/rxjs@^7.8.2?conditions=es2015",
-    "rxjs/operators": "https://esm.sh/rxjs@^7.8.2/operators?conditions=es2015",
-    "rxjs/ajax": "https://esm.sh/rxjs@^7.8.2/ajax?conditions=es2015",
-    "rxjs/webSocket": "https://esm.sh/rxjs@^7.8.2/webSocket?conditions=es2015",
-    "rxjs/testing": "https://esm.sh/rxjs@^7.8.2/testing?conditions=es2015",
-    "rxjs/fetch": "https://esm.sh/rxjs@^7.8.2/fetch?conditions=es2015",
-    "@angular/platform-browser": "https://next.esm.sh/@angular/platform-browser@^21.0.4?external=rxjs",
-    "@angular/forms": "https://next.esm.sh/@angular/forms@^21.0.4?external=rxjs",
-    "@angular/common": "https://next.esm.sh/@angular/common@^21.0.4?external=rxjs",
-    "@angular/compiler": "https://next.esm.sh/@angular/compiler@^21.0.4?external=rxjs",
-    "@angular/core": "https://next.esm.sh/@angular/core@^21.0.4?external=rxjs",
-    "firebase/app": "https://next.esm.sh/firebase@^12.6.0/app?external=rxjs",
-    "firebase/auth": "https://next.esm.sh/firebase@^12.6.0/auth?external=rxjs",
-    "firebase/firestore": "https://next.esm.sh/firebase@^12.6.0/firestore?external=rxjs",
-    "firebase/storage": "https://next.esm.sh/firebase@^12.6.0/storage?external=rxjs"
+
+  <!-- 🔹 GLOBAL BUTTON STYLES (IMPORTANT) -->
+  <style>
+    /* Base button */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 18px;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.25s ease;
+      cursor: pointer;
+      border: none;
+    }
+
+    /* Cash In – Solid Green */
+    .btn-success {
+      background-color: #0f766e; /* teal-700 */
+      color: white;
+    }
+    .btn-success:hover {
+      background-color: #0d9488; /* teal-600 */
+      transform: translateY(-1px);
+    }
+
+    /* Cash Out – Solid Red */
+    .btn-danger {
+      background-color: #b91c1c; /* red-700 */
+      color: white;
+    }
+    .btn-danger:hover {
+      background-color: #dc2626; /* red-600 */
+      transform: translateY(-1px);
+    }
+
+    /* Primary */
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: white;
+      box-shadow: 0 10px 25px rgba(99,102,241,0.35);
+    }
+     .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 35px rgba(99,102,241,0.5);
+    }
+
+    /* Neutral */
+    .btn-neutral {
+      background: #e5e7eb;
+      color: #111827;
+    }
+     .dark .btn-neutral {
+      background: #374151;
+      color: #f3f4f6;
+    }
+    .btn-neutral:hover {
+      background: #d1d5db;
+    }
+    .dark .btn-neutral:hover {
+       background: #4b5563;
+    }
+
+
+    /* Disabled */
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: translateY(0);
+    }
+    
+     /* Reports Button */
+    .btn-reports {
+      background-color: #f1f5f9; /* slate-100 */
+      color: #0f172a; /* slate-900 */
+      padding: 10px 16px;
+      font-size: 14px;
+      border-radius: 10px;
+    }
+    .dark .btn-reports {
+      background-color: #334155; /* slate-700 */
+      color: #f8fafc; /* slate-50 */
+    }
+    .btn-reports:hover {
+      background-color: #e2e8f0; /* slate-200 */
+    }
+    .dark .btn-reports:hover {
+      background-color: #475569; /* slate-600 */
+    }
+
+    /* Dropdown Item Base */
+    .dropdown-item {
+      display: flex;
+      width: 100%;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      font-size: 14px;
+      text-align: left;
+      transition: background-color 0.2s;
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+    .dropdown-item:hover {
+      background-color: #f1f5f9; /* slate-100 */
+    }
+    .dark .dropdown-item:hover {
+      background-color: #334155; /* slate-700 */
+    }
+    
+    .dropdown-item:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+     .dropdown-item:disabled:hover {
+      background-color: transparent;
+    }
+
+    /* Dropdown Logout Item */
+    .dropdown-item-danger:hover {
+      background-color: #fee2e2; /* red-100 */
+      color: #dc2626; /* red-600 */
+    }
+    .dark .dropdown-item-danger:hover {
+      background-color: #7f1d1d; /* red-900 */
+      color: #fca5a5; /* red-400 */
+    }
+  </style>
+
+  <!-- Angular + Firebase imports -->
+  <script type="importmap">
+  {
+    "imports": {
+      "rxjs": "https://esm.sh/rxjs@^7.8.2?conditions=es2015",
+      "rxjs/operators": "https://esm.sh/rxjs@^7.8.2/operators?conditions=es2015",
+      "rxjs/ajax": "https://esm.sh/rxjs@^7.8.2/ajax?conditions=es2015",
+      "rxjs/webSocket": "https://esm.sh/rxjs@^7.8.2/webSocket?conditions=es2015",
+      "rxjs/testing": "https://esm.sh/rxjs@^7.8.2/testing?conditions=es2015",
+      "rxjs/fetch": "https://esm.sh/rxjs@^7.8.2/fetch?conditions=es2015",
+
+      "@angular/compiler": "https://next.esm.sh/@angular/compiler@^21.0.5?external=rxjs",
+      "@angular/forms": "https://next.esm.sh/@angular/forms@^21.0.5?external=rxjs",
+      "@angular/common": "https://next.esm.sh/@angular/common@^21.0.5?external=rxjs",
+      "@angular/core": "https://next.esm.sh/@angular/core@^21.0.5?external=rxjs",
+      "@angular/platform-browser": "https://next.esm.sh/@angular/platform-browser@^21.0.5?external=rxjs",
+
+      "firebase/app": "https://next.esm.sh/firebase@^12.6.0/app?external=rxjs",
+      "firebase/auth": "https://next.esm.sh/firebase@^12.6.0/auth?external=rxjs",
+      "firebase/firestore": "https://next.esm.sh/firebase@^12.6.0/firestore?external=rxjs",
+      "firebase/storage": "https://next.esm.sh/firebase@^12.6.0/storage?external=rxjs"
+    }
   }
-}
-</script>
+  </script>
 </head>
+
 <body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
   <app-root></app-root>
 </body>

@@ -24,7 +24,8 @@ import {
   enableIndexedDbPersistence,
   updateDoc,
   collection,
-  getDocs
+  getDocs,
+  serverTimestamp
 } from 'firebase/firestore';
 
 import {
@@ -43,10 +44,9 @@ export interface UserProfile {
   photoURL?: string;
 }
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class FirebaseService {
+
   private firebaseApp: FirebaseApp;
   private auth: Auth;
   private firestore: Firestore;
@@ -71,40 +71,38 @@ export class FirebaseService {
     this.firestore = getFirestore(this.firebaseApp);
     this.storage = getStorage(this.firebaseApp);
 
-    enableIndexedDbPersistence(this.firestore)
-      .then(() => this.isReady.set(true))
-      .catch(() => this.isReady.set(true));
+    enableIndexedDbPersistence(this.firestore).finally(() => {
+      this.isReady.set(true);
+    });
 
     onAuthStateChanged(this.auth, async (user) => {
       this.currentUser.set(user);
-      if (user) {
-        if (!user.emailVerified) {
-          await signOut(this.auth);
-          this.currentUser.set(null);
-          this.userProfile.set(null);
-        } else {
-          await this.checkAndCreateUserProfile(user);
-          const profile = await this.getUserProfile(user.uid);
-          this.userProfile.set(profile);
-        }
-      } else {
+      if (!user) {
         this.userProfile.set(null);
+        return;
       }
+
+      if (!user.emailVerified) {
+        await signOut(this.auth);
+        return;
+      }
+
+      await this.checkAndCreateUserProfile(user);
+      this.userProfile.set(await this.getUserProfile(user.uid));
     });
   }
 
-  // ---------- AUTH ----------
+  /* ---------- AUTH ---------- */
 
-  async login(email: string, password: string): Promise<any> {
+  async login(email: string, password: string) {
     const cred = await signInWithEmailAndPassword(this.auth, email, password);
     if (!cred.user.emailVerified) {
       await signOut(this.auth);
       throw new Error('Email not verified');
     }
-    return cred;
   }
 
-  async register(name: string, email: string, password: string): Promise<void> {
+  async register(name: string, email: string, password: string) {
     const cred = await createUserWithEmailAndPassword(this.auth, email, password);
     await updateProfile(cred.user, { displayName: name });
     await this.checkAndCreateUserProfile(cred.user, name);
@@ -112,105 +110,159 @@ export class FirebaseService {
     await signOut(this.auth);
   }
 
-  logout(): Promise<void> {
+  logout() {
     return signOut(this.auth);
   }
 
-  sendPasswordReset(email: string): Promise<void> {
+  sendPasswordReset(email: string) {
     return sendPasswordResetEmail(this.auth, email);
   }
 
-  // ---------- USER PROFILE ----------
+  /* ---------- PROFILE ---------- */
 
-  async checkAndCreateUserProfile(user: User, name?: string): Promise<void> {
-    const ref = doc(this.firestore, 'users', user.uid);
-    const snap = await getDoc(ref);
+  async checkAndCreateUserProfile(user: User, name?: string) {
+    const refDoc = doc(this.firestore, 'users', user.uid);
+    const snap = await getDoc(refDoc);
 
     if (!snap.exists()) {
-      await setDoc(ref, {
+      await setDoc(refDoc, {
         uid: user.uid,
         email: user.email,
-        name: name || user.displayName || 'New User',
+        name: name || user.displayName || 'User',
         photoURL: user.photoURL || null
       });
     }
   }
 
   async getUserProfile(uid: string): Promise<UserProfile | null> {
-    const ref = doc(this.firestore, 'users', uid);
-    const snap = await getDoc(ref);
+    const snap = await getDoc(doc(this.firestore, 'users', uid));
     return snap.exists() ? snap.data() as UserProfile : null;
   }
 
-  async updateUserAccount(data: { displayName: string; photoFile?: File | null }): Promise<void> {
+  async updateUserAccount(data: { displayName: string; photoFile?: File | null }) {
     const user = this.currentUser();
-    if (!user) throw new Error('No user logged in');
+    if (!user) throw new Error('No user');
 
     let photoURL = this.userProfile()?.photoURL;
 
     if (data.photoFile) {
-      const filePath = `profile-photos/${user.uid}/${data.photoFile.name}`;
-      const storageRef = ref(this.storage, filePath);
-      const snapshot = await uploadBytes(storageRef, data.photoFile);
+      const path = `profile/${user.uid}/${Date.now()}_${data.photoFile.name}`;
+      const snapshot = await uploadBytes(ref(this.storage, path), data.photoFile);
       photoURL = await getDownloadURL(snapshot.ref);
     }
 
-    await updateProfile(user, {
-      displayName: data.displayName,
-      photoURL: photoURL,
-    });
-
-    const userDocRef = doc(this.firestore, 'users', user.uid);
-    await updateDoc(userDocRef, {
+    await updateProfile(user, { displayName: data.displayName, photoURL });
+    await updateDoc(doc(this.firestore, 'users', user.uid), {
       name: data.displayName,
-      photoURL: photoURL,
+      photoURL
     });
 
-    const updatedProfile = await this.getUserProfile(user.uid);
-    this.userProfile.set(updatedProfile);
+    this.userProfile.set(await this.getUserProfile(user.uid));
   }
 
-  // ---------- LEDGER METHODS ----------
+  /* ---------- LEDGERS ---------- */
 
-  async saveLedger(ledgerId: string, ledgerData: any): Promise<void> {
+  async saveLedger(ledgerId: string, ledgerData: any) {
     const user = this.currentUser();
-    if (!user) throw new Error('User not logged in');
-    const ref = doc(this.firestore, 'users', user.uid, 'ledgers', ledgerId);
-    
-    // The error "Property array contains an invalid nested entity" often occurs when Firestore's
-    // serialization logic encounters a complex object it can't handle, like a JavaScript Date object,
-    // even if it's not directly inside an array. By converting the entire ledger data object to a
-    // JSON string and back, we ensure all Date objects are converted to ISO date strings, which are
-    // safely serializable by Firestore. This process effectively "cleans" the object of any
-    // non-primitive types that Firestore might reject.
-    const serializableLedgerData = JSON.parse(JSON.stringify(ledgerData));
-    
-    await setDoc(ref, serializableLedgerData, { merge: true });
+    if (!user) throw new Error('No user');
+
+    const refDoc = doc(this.firestore, 'users', user.uid, 'ledgers', ledgerId);
+
+    await setDoc(refDoc, {
+      name: ledgerData.name,
+      createdAt: ledgerData.createdAt ?? serverTimestamp()
+    }, { merge: true });
   }
 
-  async getLedgers(): Promise<any[]> {
+  async getLedgers() {
     const user = this.currentUser();
     if (!user) return [];
-    const colRef = collection(this.firestore, 'users', user.uid, 'ledgers');
-    const snap = await getDocs(colRef);
+
+    const snap = await getDocs(collection(this.firestore, 'users', user.uid, 'ledgers'));
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   }
 
-  async deleteLedger(ledgerId: string): Promise<void> {
+  async deleteLedger(ledgerId: string) {
     const user = this.currentUser();
-    if (!user) throw new Error('User not logged in');
-    const ref = doc(this.firestore, 'users', user.uid, 'ledgers', ledgerId);
-    await deleteDoc(ref);
+    if (!user) return;
+
+    // FIX: Cast entries to a type with an optional attachments property to resolve type errors.
+    const entries = (await this.getEntries(ledgerId)) as { id: string; attachments?: string[] }[];
+    for (const e of entries) {
+      if (e.attachments) {
+        for (const url of e.attachments) {
+          await this.deleteAttachment(url).catch(() => {});
+        }
+      }
+      await this.deleteEntry(ledgerId, e.id);
+    }
+
+    await deleteDoc(doc(this.firestore, 'users', user.uid, 'ledgers', ledgerId));
   }
 
-  // ---------- DELETE ACCOUNT ----------
+  /* ---------- ENTRIES ---------- */
 
-  async deleteUserAccount(): Promise<void> {
+  async getEntries(ledgerId: string) {
     const user = this.currentUser();
-    if (!user) throw new Error('No user logged in');
+    if (!user) return [];
 
-    // You might want to delete subcollections (like ledgers) here first
-    // For now, we'll just delete the user doc and the user auth record.
+    const entriesCollection = collection(this.firestore, 'users', user.uid, 'ledgers', ledgerId, 'entries');
+
+    const snap = await getDocs(entriesCollection);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+
+  async saveEntry(ledgerId: string, entryId: string, data: any) {
+    const user = this.currentUser();
+    if (!user) throw new Error('No user');
+
+    await setDoc(
+      doc(this.firestore, 'users', user.uid, 'ledgers', ledgerId, 'entries', entryId),
+      data,
+      { merge: true }
+    );
+  }
+
+  async deleteEntry(ledgerId: string, entryId: string) {
+    const user = this.currentUser();
+    if (!user) return;
+
+    await deleteDoc(
+      doc(this.firestore, 'users', user.uid, 'ledgers', ledgerId, 'entries', entryId)
+    );
+  }
+
+  /* ---------- ATTACHMENTS ---------- */
+
+  async uploadAttachment(ledgerId: string, entryId: string, file: File): Promise<string> {
+    const user = this.currentUser();
+    if (!user) throw new Error('No user');
+
+    const path = `attachments/${user.uid}/${ledgerId}/${entryId}/${Date.now()}_${file.name}`;
+    const snapshot = await uploadBytes(ref(this.storage, path), file);
+    return getDownloadURL(snapshot.ref);
+  }
+
+  async deleteAttachment(downloadUrl: string) {
+    try {
+      const storageRef = ref(this.storage, downloadUrl);
+      await deleteObject(storageRef);
+    } catch {
+      // ignore missing file
+    }
+  }
+
+  /* ---------- DELETE ACCOUNT ---------- */
+
+  async deleteUserAccount() {
+    const user = this.currentUser();
+    if (!user) return;
+
+    const ledgers = await this.getLedgers();
+    for (const l of ledgers) {
+      await this.deleteLedger(l.id);
+    }
+
     await deleteDoc(doc(this.firestore, 'users', user.uid));
     await deleteUser(user);
   }
